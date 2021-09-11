@@ -1,15 +1,12 @@
-
 require "packetgen"
 require_relative "connection"
 
 module CovertChannel
   class Client
-    SYN = 0x1002
-    PSH = 0x1008
 
-    def initialize(dst_ip:, dst_port:)
-      @dst_ip = dst_ip
-      @dst_port = dst_port
+    def initialize(dst_ip:, dst_port:, conn_class: Connection)
+      @conn_class = conn_class
+      @conn = conn_class.new(dst_ip: dst_ip, dst_port: dst_port)
     end
 
     def call
@@ -19,27 +16,16 @@ module CovertChannel
     private
 
     def connect
-      send_packet(flags: SYN)
+      @conn.send_packet(flags: @conn_class::SYN + @conn_class::ACK)
+      @conn.state = @conn_class::STATE_INITIATED
+    end
+
+    def close
+      @conn.send_packet(flags: @conn_class::FIN)
     end
 
     def send_message
-      send_packet(flags: PSH, payload: "test")
-    end
-
-    # def send_syn
-    #   pkt = PacketGen.gen("IP").add("TCP")
-    #   pkt.ip(dst: @dst_ip)
-    #   pkt.tcp(dport: @dst_port, sport: rand(49152..65535), flag_syn: 1, body: "test")
-    #   # p pkt.headers.each { |h| p h.to_h rescue nil }
-    #   pkt.to_w("wlo1")
-    # end
-
-    def send_packet(flags:, payload: "")
-      pkt = PacketGen.gen("Eth").add("IP").add("TCP")
-      pkt.ip(dst: @dst_ip)
-      pkt.tcp(dport: @dst_port, sport: rand(49152..65535), flags: flags, body: payload)
-      p pkt.headers.each { |h| p h.to_h rescue nil }
-      pkt.to_w("wlo1")
+      @conn.send_packet(flags: @conn_class::PSH, payload: "test")
     end
   end
 end

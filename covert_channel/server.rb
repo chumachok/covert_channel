@@ -5,17 +5,17 @@ module CovertChannel
   class Server
     OUTPUT_FILE_PATH = "data/out.txt"
 
-    def initialize(listen_port:, listen_ip: nil)
+    def initialize(listen_port:, listen_ip: nil, conn_class: Connection)
       @listen_ip = listen_ip
       @listen_port = listen_port
+      @conn_class = conn_class
     end
 
     def call
       capture_filter = ""
       capture_filter << "ip src #{@listen_ip} " if @listen_ip
       capture_filter << "dst port #{@listen_port}"
-      # filter: 'ip src 127.0.0.1'
-      PacketGen.capture(iface: "wlo1", filter: capture_filter) do |packet|
+      PacketGen.capture(filter: capture_filter) do |packet|
         handle(packet)
       end
     end
@@ -23,9 +23,11 @@ module CovertChannel
     private
 
     def handle(packet)
-      tcph = packet.headers.find { |header| header.is_a?(PacketGen::Header::TCP) }
+      tcph = packet.tcp
+      iph = packet.ip
+      conn = @conn_class.new(dst_ip: iph.src, dst_port: tcph.sport)
       if tcph.flag_syn?
-        
+        conn.send_packet(flags: @conn_class::SYN + @conn_class::ACK, seqnum: rand(0..(2**32 - 1)), acknum: tcph.seqnum + 1)
       elsif tcph.flag_rst?
 
       elsif tcph.flag_psh?
@@ -36,20 +38,5 @@ module CovertChannel
 
       end
     end
-
-    # def call
-      # capture_filter = ""
-      # capture_filter << "ip src #{@listen_ip} " if @listen_ip
-      # capture_filter << "dst port #{@listen_port}"
-      # PacketGen.capture(iface: "wlo1", filter: 'ip src 127.0.0.1') do |packet|
-      #   p packet
-        # ip_header = packet.headers.find { |h| h.is_a?(PacketGen::Header::IP) }&.to_h
-        # # get the encoded value
-        # File.open(OUTPUT_FILE_PATH, "a") do |f|
-          
-        #   f << 
-        # end
-      # end
-    # end
   end
 end
