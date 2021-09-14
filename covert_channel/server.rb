@@ -18,22 +18,18 @@ module CovertChannel
       capture_filter << "dst port #{@capture_port}"
 
       PacketGen.capture(iface: "wlo1", filter: capture_filter) do |packet|
-        handle(packet)
-        file_content = File.read(OUTPUT_FILE_PATH)
-        if file_content.include?(END_MESSAGE_SEQUENCE)
+        ttl = packet&.ip&.ttl
+        if ttl < DEFAULT_MIN_TTL
+          file_content = File.read(OUTPUT_FILE_PATH)
           puts "------------------------- message captured -------------------------\n#{file_content}\nexiting..."
           exit(0)
         end
+        char = decode(ttl)
+        File.open(OUTPUT_FILE_PATH, "a") { |f| f << char }
       end
     end
 
     private
-
-    def handle(packet)
-      ttl = packet.ip.ttl
-      char = decode(ttl)
-      File.open(OUTPUT_FILE_PATH, "a") { |f| f << char }
-    end
 
     def decode(ttl)
       (ttl - DEFAULT_MIN_TTL).chr
