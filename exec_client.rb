@@ -17,7 +17,7 @@ option_parser = OptionParser.new do |opts|
   end
 
   opts.on("-p", "--dst_port port", "specify destination port") do |port|
-    options[:dst_port] = port
+    options[:dst_port] = port.to_i
   end
 
   opts.on("-f", "--file_path path", "specify path to a file") do |path|
