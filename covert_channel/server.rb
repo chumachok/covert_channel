@@ -3,7 +3,8 @@ require_relative "constants"
 
 module CovertChannel
   class Server
-    OUTPUT_FILE_PATH = File.join(__dir__, "..", "out", "out.txt")
+    OUTPUT_FILE_PATH = File.join(dir, "..", "out", "out.txt")
+    IPTABLES_BLOCK_ICMP_DESTINATION_UNREACHABLE = "iptables -A OUTPUT -p icmp --icmp-type destination-unreachable -j DROP"
 
     def initialize(capture_ip: nil, capture_port: DNS_PORT)
       @capture_ip = capture_ip
@@ -12,6 +13,7 @@ module CovertChannel
 
     def call
       reset_output_file(OUTPUT_FILE_PATH)
+      setup_firewall_rules
 
       ip_self = Socket.ip_address_list[1].ip_address
       capture_filter = "(ip dst #{LOOPBACK_IP} || ip dst #{ip_self}) && "
@@ -33,6 +35,10 @@ module CovertChannel
     end
 
     private
+
+    def setup_firewall_rules
+      system(IPTABLES_BLOCK_ICMP_DESTINATION_UNREACHABLE)
+    end
 
     def decode(checksum)
       (checksum - APPROXIMATE_CHECKSUM).chr
